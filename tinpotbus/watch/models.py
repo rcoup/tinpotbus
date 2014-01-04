@@ -46,6 +46,7 @@ class WatchManager(models.Manager):
         if not queryset:
             queryset = self.get_query_set().filter(is_active=True)
 
+        stats = [0, 0]
         for url in self.get_api_urls(queryset):
             try:
                 L.debug('Hitting Maxx API: %s', url)
@@ -61,6 +62,9 @@ class WatchManager(models.Manager):
                         raise
 
                     L.debug("Got %s movements", len(data['Movements']))
+                    if len(data['Movements']):
+                        stats[0] += 1
+
                     for movement in data['Movements']:
                         # {
                         #     ActualArrivalTime: "/Date(1388781780000)/",
@@ -97,11 +101,16 @@ class WatchManager(models.Manager):
                             raise
                 else:
                     L.warning('GET %s status=%s', url, r.status_code)
+                    stats[1] += 1
             except Exception as e:
                 L.error('GET %s error=%s', url, e)
                 if settings.DEBUG:
                     raise
 
+        if sum(stats):
+            return stats[0] / float(stats[0] + stats[1])
+        else:
+            return 1.0
 
     def _parse_js_date(self, value):
         """ Parse a .NET Javascript-serialized date (eg. "/Date(1354011247940)/") to a datetime object """

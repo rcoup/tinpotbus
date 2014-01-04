@@ -1,4 +1,7 @@
 import logging
+from optparse import make_option
+import sys
+import time
 
 from django.core.management.base import NoArgsCommand
 from watch.models import Watch
@@ -6,6 +9,16 @@ from watch.models import Watch
 
 class Command(NoArgsCommand):
     help = 'Updates all the watched routes/stops.'
+
+    option_list = NoArgsCommand.option_list + (
+        make_option('--loop',
+            action='store',
+            dest='loop',
+            type='int',
+            default=None,
+            help='Refresh continously every LOOP seconds.',
+            metavar='LOOP'),
+        )
 
     def handle_noargs(self, **options):
 
@@ -24,5 +37,24 @@ class Command(NoArgsCommand):
         h.setFormatter(logging.Formatter('%(asctime)s %(name)s[%(levelname)s]: %(message)s'))
         logging.getLogger().addHandler(h)
 
-        # do stuff
-        Watch.objects.refresh()
+        MAX_BACKOFF = 20  # multiple of the loop time
+        loop_time = options['loop']
+        while True:
+            # do stuff
+            stats = Watch.objects.refresh()
+
+            if not loop_time:
+                break
+            else:
+                if stats == 0.0:
+                    loop_time = min(loop_time * 2, options['loop'] * MAX_BACKOFF)
+                else:
+                    loop_time = options['loop']
+
+                if verbosity >= 2:
+                    print >>sys.stderr, "Sleeping for %d seconds" % loop_time
+
+                try:
+                    time.sleep(loop_time)
+                except KeyboardInterrupt:
+                    break
