@@ -42,4 +42,4 @@ Uses the same requests that the Maxx [Real Time Board](http://www.maxx.co.nz/) d
 5. `python tinpotbus/manage.py syncdb --migrate`
 6. `python tinpotbus/manage.py runserver` to start the debug server
 7. Head to http://localhost:8000/admin/ and create a Watch or two. Use the Stop and Route numbers from the Maxx [Real Time Board](http://www.maxx.co.nz/).
-8. Run `python tinpotbus/manage.py watch_refresh` regularly (the website does it every 45 seconds fwiw) to update the data. **Don't abuse the system.**
+8. Run `python tinpotbus/manage.py watch_refresh` and see the options for how to update regularly (the website does it every 45 seconds fwiw). **Don't abuse the system.**
