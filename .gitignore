@@ -1,0 +1,4 @@
+*.pyc
+venv/
+tinpotbus/db.sqlite3
+tinpotbus/tinpotbus/settings_site.py
