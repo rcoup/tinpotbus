@@ -106,6 +106,7 @@ class Watch(models.Model):
     stop_id = models.IntegerField('Stop', db_index=True)
     route_id = models.CharField('Route', max_length=20, db_index=True)
     is_active = models.BooleanField(default=True, db_index=True)
+    who_for = models.TextField(blank=True)
 
     objects = WatchManager()
 
