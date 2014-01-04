@@ -1,6 +1,6 @@
 # TinPotBus
 
-Gathering some data on just how often Auckland Transport buses are running early or late.
+Gathering some data on just how often [Auckland Transport](http://www.maxx.co.nz) buses are running early or late.
 
 ### Goals
 
