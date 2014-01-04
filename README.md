@@ -41,5 +41,5 @@ Uses the same requests that the Maxx [Real Time Board](http://www.maxx.co.nz/) d
 4. Create `tinpotbus/tinpotbus/settings_site.py` and override any Django settings you need to.
 5. `python tinpotbus/manage.py syncdb --migrate`
 6. `python tinpotbus/manage.py runserver` to start the debug server
-7. Head to http://localhost:8000/admin/ and create a Watch or two. Use the Stop and Route numbers from the Maxx [Real Time Board](http://www.maxx.co.nz/).
+7. Head to `http://localhost:8000/admin/` and create a Watch or two. Use the Stop and Route numbers from the Maxx [Real Time Board](http://www.maxx.co.nz/).
 8. Run `python tinpotbus/manage.py watch_refresh` and see the options for how to update regularly (the website does it every 45 seconds fwiw). **Don't abuse the system.**
