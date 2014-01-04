@@ -1,5 +1,6 @@
 import datetime
 import json
+import logging
 import random
 import re
 import time
@@ -34,24 +35,32 @@ class WatchManager(models.Manager):
             url = self.API_BASE_URL % {
                 'stop_id': stop_id,
                 'callback': callback,
-                'timestamp': int(time.time() * 1000),
+                'timestamp': int((time.time() + random.random()) * 1000),
             }
             urls.append(url)
 
         return urls
 
     def refresh(self, queryset=None):
+        L = logging.getLogger('tinpotbus.watch.refresh')
         if not queryset:
             queryset = self.get_query_set().filter(is_active=True)
 
         for url in self.get_api_urls(queryset):
             try:
+                L.debug('Hitting Maxx API: %s', url)
                 r = requests.get(url, headers=api_headers, timeout=10)
                 if r.status_code == 200:
-                    r_jsonp = r.text
-                    r_json = r_jsonp[r_jsonp.index("(")+1 : r_jsonp.rindex(")")]
-                    data = json.loads(r_json)
+                    L.debug('GET %s status=%s', url, r.status_code)
+                    try:
+                        r_jsonp = r.text
+                        r_json = r_jsonp[r_jsonp.index("(")+1 : r_jsonp.rindex(")")]
+                        data = json.loads(r_json)
+                    except Exception as e:
+                        L.error("Decoding JSONP: %s source=%s", e, repr(r.text))
+                        raise
 
+                    L.debug("Got %s movements", len(data['Movements']))
                     for movement in data['Movements']:
                         # {
                         #     ActualArrivalTime: "/Date(1388781780000)/",
@@ -80,9 +89,16 @@ class WatchManager(models.Manager):
                         except Watch.DoesNotExist:
                             continue
 
-                        watch.create_or_update_service(movement)
-
-            except:
+                        L.debug("Updating watch: %s %s", watch.pk, str(watch))
+                        try:
+                            watch.create_or_update_service(movement)
+                        except Exception as e:
+                            L.error("Updating watch %s: %s", watch.pk, e)
+                            raise
+                else:
+                    L.warning('GET %s status=%s', url, r.status_code)
+            except Exception as e:
+                L.error('GET %s error=%s', url, e)
                 if settings.DEBUG:
                     raise
 
@@ -127,6 +143,7 @@ class Watch(models.Model):
             if not service.monitored_departure_time:
                 service.first_monitored_at = movement['TimeStamp']
             service.monitored_departure_time = movement['ExpectedDepartureTime']
+            service.last_monitored_at = movement['ExpectedDepartureTime']
         elif service.monitored_departure_time:
             service.last_monitored_at = service.updated_at # previous time
 
