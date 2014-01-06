@@ -55,11 +55,14 @@ class WatchManager(models.Manager):
                     L.debug('GET %s status=%s', url, r.status_code)
                     try:
                         r_jsonp = r.text
-                        r_json = r_jsonp[r_jsonp.index("(")+1 : r_jsonp.rindex(")")]
+                        r_json = r_jsonp[r_jsonp.index("(")+1:r_jsonp.rindex(")")]
                         data = json.loads(r_json)
                     except Exception as e:
                         L.error("Decoding JSONP: %s source=%s", e, repr(r.text))
                         raise
+
+                    if 'Movements' not in data or not data['Movements']:
+                        continue
 
                     L.debug("Got %s movements", len(data['Movements']))
                     if len(data['Movements']):
