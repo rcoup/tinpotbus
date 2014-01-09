@@ -6,7 +6,6 @@ import re
 import time
 
 from django.conf import settings
-from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
 from django.utils import timezone
 import pytz
@@ -18,6 +17,7 @@ api_nonce = ['jQuery' + str(random.random()).replace('0.', ''), int(time.time() 
 api_headers = {
     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8) AppleWebKit/536.25 (KHTML, like Gecko) Version/6.0 Safari/536.25',
     'Referer': 'http://www.maxx.co.nz/',
+    'Accept-Encoding': 'gzip,deflate',
 }
 
 
@@ -126,7 +126,7 @@ class WatchManager(models.Manager):
 
         d = datetime.datetime.fromtimestamp(int(m.group(1))/1000.0)
         d = timezone.make_aware(d, pytz.timezone("Pacific/Auckland"))
-        
+
         return d
 
 
@@ -151,17 +151,11 @@ class Watch(models.Model):
             service = Service(watch=self, scheduled_departure_time=movement['ActualDepartureTime'], created_at=movement['TimeStamp'])
 
         service.is_monitored = service.is_monitored or movement['Monitored']
-        if movement['ExpectedDepartureTime']:
-            if not service.monitored_departure_time:
-                service.first_monitored_at = movement['TimeStamp']
-            service.monitored_departure_time = movement['ExpectedDepartureTime']
-            service.last_monitored_at = movement['ExpectedDepartureTime']
-        elif service.monitored_departure_time:
-            service.last_monitored_at = service.updated_at # previous time
-
-        service.last_data = movement
-        service.updated_at = movement['TimeStamp']
+        service.updated_at = movement['TimeStamp'] or timezone.now()
         service.save()
+
+        if (movement['ActualDepartureTime'] - timezone.now()) <= datetime.timedelta(hours=1):
+            service.create_event(movement)
 
         return service
 
@@ -169,27 +163,36 @@ class Watch(models.Model):
 class Service(models.Model):
     watch = models.ForeignKey(Watch, related_name='services')
     scheduled_departure_time = models.DateTimeField(db_index=True)
-    is_monitored = models.BooleanField(db_index=True)
+    is_monitored = models.BooleanField(db_index=True, default=False)
     created_at = models.DateTimeField()
     updated_at = models.DateTimeField()
-    first_monitored_at = models.DateTimeField(null=True, help_text="Time when the monitoring started.")
-    last_monitored_at = models.DateTimeField(null=True, help_text="Last time we saw monitoring before it stopped.")
-    monitored_departure_time = models.DateTimeField(null=True)
-    last_data_json = models.TextField(default='')
 
     def __unicode__(self):
-        return u"%s: %s" % (self.watch, self.scheduled_departure_time.isoformat())
+        return u"%s: %s" % (self.watch, timezone.localtime(self.scheduled_departure_time).isoformat())
 
-    def _last_data_get(self):
-        if self.last_data_json:
-            return json.loads(self.last_data_json)
-        else:
-            return None
+    def create_event(self, movement):
+        e = ServiceEvent(service=self)
+        for k, v in movement.items():
+            field = 'maxx_%s' % k
+            setattr(e, field, v)
+        e.save()
+        return e
 
-    def _last_data_set(self, value):
-        if not value:
-            self.last_data_json = ''
-        else:
-            self.last_data_json = json.dumps(value, cls=DjangoJSONEncoder)
 
-    last_data = property(_last_data_get, _last_data_set)
+class ServiceEvent(models.Model):
+    service = models.ForeignKey(Service, related_name='events', db_index=True)
+    maxx_ActualArrivalTime = models.DateTimeField('ActualArrivalTime', null=True, db_index=True)
+    maxx_ActualDepartureTime = models.DateTimeField('ActualDepartureTime', null=True, db_index=True)
+    maxx_ArrivalStatus = models.CharField('ArrivalStatus', max_length=200, blank=True, null=True, db_index=True)
+    maxx_ExpectedArrivalTime = models.DateTimeField('ExpectedArrivalTime', null=True, db_index=True)
+    maxx_ExpectedDepartureTime = models.DateTimeField('ExpectedDepartureTime', null=True, db_index=True)
+    maxx_InCongestion = models.NullBooleanField('InCongestion', null=True, db_index=True)
+    maxx_Monitored = models.NullBooleanField('Monitored', null=True, db_index=True)
+    maxx_TimeStamp = models.DateTimeField('TimeStamp', null=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ('-created_at',)
+
+    def __unicode__(self):
+        return timezone.localtime(self.created_at).isoformat()
