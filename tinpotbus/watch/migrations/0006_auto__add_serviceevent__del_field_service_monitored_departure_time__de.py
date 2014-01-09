@@ -36,7 +36,8 @@ class Migration(SchemaMigration):
         # Deleting field 'Service.first_monitored_at'
         db.delete_column(u'watch_service', 'first_monitored_at')
 
-        orm.Service.objects.all().delete()
+        if not db.dry_run:
+            db.execute('DELETE FROM watch_service;')
 
     def backwards(self, orm):
         # Deleting model 'ServiceEvent'
