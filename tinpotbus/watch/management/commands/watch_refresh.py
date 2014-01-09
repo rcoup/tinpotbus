@@ -12,13 +12,13 @@ class Command(NoArgsCommand):
 
     option_list = NoArgsCommand.option_list + (
         make_option('--loop',
-            action='store',
-            dest='loop',
-            type='int',
-            default=None,
-            help='Refresh continously every LOOP seconds.',
-            metavar='LOOP'),
-        )
+                    action='store',
+                    dest='loop',
+                    type='int',
+                    default=None,
+                    help='Refresh continously every LOOP seconds.',
+                    metavar='LOOP'),
+    )
 
     def handle_noargs(self, **options):
 
@@ -35,7 +35,9 @@ class Command(NoArgsCommand):
         h = logging.StreamHandler()
         h.setLevel(log_level)
         h.setFormatter(logging.Formatter('%(asctime)s %(name)s[%(levelname)s]: %(message)s'))
-        logging.getLogger().addHandler(h)
+        L = logging.getLogger('tinpotbus')
+        L.addHandler(h)
+        L.setLevel(log_level)
 
         MAX_BACKOFF = 20  # multiple of the loop time
         loop_time = options['loop']
