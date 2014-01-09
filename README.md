@@ -36,7 +36,7 @@ Uses the same requests that the Maxx [Real Time Board](http://www.maxx.co.nz/) d
 ### Install & Configure
 
 1. Clone the code
-2. Create and activate a python virtualenv
+2. Create and activate a python virtualenv (`virtualenv venv; source venv/bin/activate`)
 3. `pip install -r requirements.txt`
 4. Create `tinpotbus/tinpotbus/settings_site.py` and override any Django settings you need to.
 5. `python tinpotbus/manage.py syncdb --migrate`
